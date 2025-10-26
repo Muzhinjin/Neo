@@ -11,3 +11,5 @@ mv * ../../../../ && \
 cd ../../../../ && \
 rm -rf ${ACC}_data && \
 echo "✅ Files downloaded, extracted, and renamed for $ACC"
+# THMMM
+biolib run DTU/DeepTMHMM --fasta 104contigs_effectors.fa
