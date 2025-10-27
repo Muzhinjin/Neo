@@ -19,9 +19,8 @@ biolib run DTU/DeepTMHMM --fasta 104contigs_effectors.fa
 
 samtools view -@ 8 -Sb sample.sam | samtools sort -@ 8 -o sample.sorted.bam
 samtools index sample.sorted.bam
-bcftools mpileup --threads 8 -f reference_genome.fna *.sorted.bam 
-bcftools call --threads 8 -mv -Ob -o all_samples_variants.bcf
-bcftools filter -e 'QUAL<30 || DP<10' all_samples_variants.bcf -Ov -o all_samples_variants.filtered.vcf
+bcftools mpileup --threads 8 -f reference_genome.fna *.sorted.bam I bcftools call --threads 8 -mv -Ob -o all_samples_variants.bcf
+bcftools filter -e 'QUAL<30 || DP<10' all_samplevariants.bcf -Ov -o all_samples_variants.filtered.vcf
 
 snpEff build -c snpEff.config -gff3 -v Your_Neo_Genome
 snpEff Your_Neo_Genome all_samples_variants.filtered.vcf > all_samples_variants.annotated.vcf
