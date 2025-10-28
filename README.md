@@ -13,6 +13,7 @@ rm -rf ${ACC}_data && \
 echo "✅ Files downloaded, extracted, and renamed for $ACC"
 # THMMM
 biolib run DTU/DeepTMHMM --fasta 104contigs_effectors.fa
+/home/muzhinjin/Tika_neosporadis/neosporadis_project/Neopcontigs/Proteins/signalp_only/effector_only/effector_only/./effectornotm.py
 
 
 # Fungicides resistance 
