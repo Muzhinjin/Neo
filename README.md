@@ -16,6 +16,10 @@ biolib run DTU/DeepTMHMM --fasta 104contigs_effectors.fa
 /home/muzhinjin/Tika_neosporadis/neosporadis_project/Neopcontigs/Proteins/signalp_only/effector_only/effector_only/./effectornotm.py
 
 
+
+#gatk
+for bam in *_sorted.bam; do   base=$(basename "$bam" _sorted.bam);   ern jobs submit --name="GATKrD_${base}" --threads=8 --memory=32gb --hours=72 --input "$bam" --module='gatk/1.0_5ea5a38' --command= gatk -- AddOrReplaceReadGroups -I $bam -O ${base}_sorted_RG.bam -RGID $base -RGLB lib1 -RGPL ILLUMINA -RGPU unit1 -RGSM $base; done
+
 # Fungicides resistance 
 
 samtools view -@ 8 -Sb sample.sam | samtools sort -@ 8 -o sample.sorted.bam
