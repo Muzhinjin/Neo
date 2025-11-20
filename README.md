@@ -1,3 +1,19 @@
+module load cluster/hpc
+ern cluster create --name=hpc --head-node=login.hpc.ufs.ac.za --node-select=ern --email-address=MuzhinjiN@ufs.ac.za --shared-fs
+
+
+gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
+gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
+gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
+gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
+gatk GenotypeGVCFs  -R Neopestalotiopsis_rosae_1902.fasta -V combined.g.vcf.gz  -O raw_joint.vcf.gz
+gatk VariantFiltration -R Neopestalotiopsis_rosae_1902.fasta -V raw_joint.vcf.gz --filter-name "QD_lt_10" --filter-expression "QD < 10.0  --filter-name "FS_gt_55" --filter-expression "FS > 55.0" --filter-name "MQ_lt_45" --filter-expression "MQ < 45.0" --filter-name "ReadPosRankSum_outside" --filter-expression "ReadPosRankSum < -4.0 || ReadPosRankSum > 4.0"
+
+gatk VariantFiltration   -R Neopestalotiopsis_rosae_1902.fasta   -V raw_joint.vcf.gz   --filter-name "QD_lt_10" --filter-expression "QD < 10.0"   --filter-name "FS_gt_55" --filter-expression "FS > 55.0"   --filter-name "MQ_lt_45" --filter-expression "MQ < 45.0"   --filter-name "ReadPosRankSum_outside" --filter-expression "ReadPosRankSum < -4.0 || ReadPosRankSum > 4.0"   -O raw_joint.filtered.vcf.gz
+
+bcftools view -m2 -M2 -v snps filtered_PASS.vcf.gz -O z -o filtered_PASS_biallelic_snps.vcf.gz
+
+
 # Neo
 #Genome statistics
 
