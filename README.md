@@ -14,6 +14,9 @@ gatk VariantFiltration   -R Neopestalotiopsis_rosae_1902.fasta   -V raw_joint.vc
 bcftools view -m2 -M2 -v snps filtered_PASS.vcf.gz -O z -o filtered_PASS_biallelic_snps.vcf.gz
 
 
+java -Xmx64G -jar pilon-1.24.jar --genome flye_assembly/assembly.fasta --frags illumina_mapped.sorted.bam --output polished
+java -Xmx64G -jar pilon-1.24.jar --genome /home/muzhinjin/Tika_neosporadis/neosporadis_project/Neopcontigs/genomes/NC65contigs.fasta  --frags NC65_S32_sorted.bam --output pilonresults/NC65_assembly_pilon  
+
 # Neo
 #Genome statistics
 
