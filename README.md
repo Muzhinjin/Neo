@@ -7,6 +7,29 @@ ern jobs submit   --name=Neosamtoolsview   --threads=32   --memory=128gb   --hou
         samtools view -@ 8 -bS "$f" > "${base}_unsorted.bam"
     done
 
+
+    ern jobs submit \
+  --name=pilonrun \
+  --threads=32 \
+  --memory=128gb \
+  --hours=48 \
+  --input="*_contigs.fasta,*_sorted.bam" \
+  --module="java,pilon" \
+  --command='
+    for ref in *_contigs.fasta; do
+        base=${ref%_contigs.fasta}
+        bam="${base}_sorted.bam"
+        if [[ -f "$bam" ]]; then
+            java -Xmx120g -jar pilon.jar \
+              --genome "$ref" \
+              --bam "$bam" \
+              --output "${base}_pilon" \
+              --threads 32
+        fi
+    done
+  '
+
+
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
 gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
