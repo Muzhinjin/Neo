@@ -1,6 +1,11 @@
 module load cluster/hpc
 ern cluster create --name=hpc --head-node=login.hpc.ufs.ac.za --node-select=ern --email-address=MuzhinjiN@ufs.ac.za --shared-fs
-
+#Loop so many samples
+ern jobs submit   --name=Neosamtoolsview   --threads=32   --memory=128gb   --hours=48   --input="*.sam"   --module="samtools/2.1_4854cc4"   --command='
+    for f in *.sam; do
+        base=${f%.sam}
+        samtools view -@ 8 -bS "$f" > "${base}_unsorted.bam"
+    done
 
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
 gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
