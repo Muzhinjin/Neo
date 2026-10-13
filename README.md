@@ -1,3 +1,6 @@
+
+
+
 module load cluster/hpc
 ern cluster create --name=hpc --head-node=login.hpc.ufs.ac.za --node-select=ern --email-address=MuzhinjiN@ufs.ac.za --shared-fs
 #Loop so many samples
@@ -8,6 +11,19 @@ ern jobs submit   --name=Neosamtoolsview   --threads=32   --memory=128gb   --hou
     done
 
 
+
+ern jobs submit \
+  --name=NC100_fastqc \
+  --threads=4 \
+  --memory=16gb \
+  --hours=4 \
+  --input="NC100_S423_R1_001.fastq"  --input="NC100_S423_R2_001.fastq" \
+  --module='fastqc/1.0_4fa3c56' \
+  --command=fastqc \
+  -- \
+  --threads 4 \
+  NC100_S423_R1_001.fastq \
+  NC100_S423_R2_001.fastq
     ern jobs submit \
   --name=pilonrun \
   --threads=32 \
