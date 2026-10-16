@@ -1,8 +1,8 @@
-
-
-
 module load cluster/hpc
 ern cluster create --name=hpc --head-node=login.hpc.ufs.ac.za --node-select=ern --email-address=MuzhinjiN@ufs.ac.za --shared-fs
+# Quality
+
+
 #Loop so many samples
 ern jobs submit   --name=Neosamtoolsview   --threads=32   --memory=128gb   --hours=48   --input="*.sam"   --module="samtools/2.1_4854cc4"   --command='
     for f in *.sam; do
