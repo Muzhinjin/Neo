@@ -10,7 +10,10 @@ ern jobs submit   --name=Neosamtoolsview   --threads=32   --memory=128gb   --hou
         samtools view -@ 8 -bS "$f" > "${base}_unsorted.bam"
     done
 
-
+# change fq.gz t fastq
+for file in *_good_2.fq.gz; do
+    gzip -dc "$file" > "${file%.fq.gz}.fastq"
+done
 
 ern jobs submit \
   --name=NC100_fastqc \
