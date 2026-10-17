@@ -47,7 +47,7 @@ ern jobs submit \
         fi
     done
   '
-#Spdes
+# Spdes
 ls *_R1_filtered.fastq.gz | sed 's/_R1_filtered.fastq.gz//' > samples_all.txt
 wc -l samples_all.txt
 bash submit_spades.sh samples_all.txt
