@@ -47,7 +47,10 @@ ern jobs submit \
         fi
     done
   '
-
+#Spdes
+ls *_R1_filtered.fastq.gz | sed 's/_R1_filtered.fastq.gz//' > samples_all.txt
+wc -l samples_all.txt
+bash submit_spades.sh samples_all.txt
 
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
 gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
