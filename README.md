@@ -15,6 +15,10 @@ for file in *_good_2.fq.gz; do
     gzip -dc "$file" > "${file%.fq.gz}.fastq"
 done
 
+for file in *_reads.fastq.gz; do
+    gzip -dc "$file" > "${file%.fastq.gz}.fastq"
+done
+
 ern jobs submit \
   --name=NC100_fastqc \
   --threads=4 \
