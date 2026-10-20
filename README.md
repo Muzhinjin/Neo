@@ -63,6 +63,11 @@ do
     echo "Processed $file -> $output"
 done
 
+# Extract sequences
+
+ern jobs submit --name="auspicious-ocelot" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in PX112669.fasta -dbtype nucl -out PX112669_db
+
+
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
 gatk CombineGVCFs -R Neopestalotiopsis_rosae_1902.fasta $(for f in *_g.vcf.gz; do echo -V $f; done) -O combined.g.vcf.gz
 gatk --java-options "-Xmx4g" HaplotypeCaller -R Neopestalotiopsis_rosae_1902.fasta -I 68_S416_dedup.bam -O 68_S416_g.vcf.gz -ERC BP_RESOLUTION --sample-ploidy 1
