@@ -63,6 +63,9 @@ do
     echo "Processed $file -> $output"
 done
 
+# Augustus
+ern jobs submit   --name=AugustusNeo   --threads=16  --memory=128gb   --hours=100   --input="*.fasta"   --input="run_augustus.sh"   --module="augustus/1.0_e86bc41"   --command="bash run_augustus.sh"
+
 # Extract sequences
 
 ern jobs submit --name="auspicious-ocelot" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in PX112669.fasta -dbtype nucl -out PX112669_db
