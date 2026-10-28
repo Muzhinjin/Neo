@@ -62,6 +62,25 @@ do
     seqkit seq -m 500 "$file" > "$output"
     echo "Processed $file -> $output"
 done
+# Busco
+for fasta in *.fasta
+do
+    name=$(basename "$fasta" .fasta)
+
+    ern jobs submit \
+        --name="BUSCO_${name}" \
+        --threads=16 \
+        --memory=128gb \
+        --hours=100 \
+        --input="$fasta" \
+        --module="busco/1.0_88de6b8" \
+        --command=busco -- \
+        "$fasta" \
+        -l dothideomycetes_odb10 \
+        -m genome \
+        -o "${name}_busco" \
+        -c 32
+done
 
 # Augustus
 ern jobs submit   --name=AugustusNeo   --threads=16  --memory=128gb   --hours=100   --input="*.fasta"   --input="run_augustus.sh"   --module="augustus/1.0_e86bc41"   --command="bash run_augustus.sh"
