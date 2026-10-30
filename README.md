@@ -76,7 +76,7 @@ do
         --module="busco/1.0_88de6b8" \
         --command=busco -- \
         "$fasta" \
-        -l dothideomycetes_odb10 \
+        -l sordariomycetes_odb10 \
         -m genome \
         -o "${name}_busco" \
         -c 32
