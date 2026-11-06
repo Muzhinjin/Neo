@@ -188,6 +188,228 @@ BEGIN {
 {
     # Extract INFO field
     split($8, info, ";");
+
+
+    # Neopestalotiopsis
+
+# Create a working directory and move all FASTQ files there.
+mkdir fungal_project
+cd fungal_project
+mkdir raw_data trimmed_data qc_reports
+mv *_R1_001.fastq.gz *_R2_001.fastq.gz raw_data/
+
+/home/muzhinjin/tikafinal/ncbi-blast-2.15.0+/bin/blastn -query sdhB_Zymoseptoria_tritici_resistance_DNA.fasta  -db all_contigs_db -out cytb_hits.txt -evalue 1e-10 -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'
+
+awk '{
+  contig=$2; start=$9; end=$10;
+  if (start < end) { strand="plus"; s=start; e=end }
+  else { strand="minus"; s=end; e=start }
+  print contig, s, e, strand
+}' cytb_hits.txt > sdhBb_coords.txt
+
+
+  while read contig start end strand; do
+  /home/muzhinjin/tikafinal/ncbi-blast-2.15.0+/bin/blastdbcmd \
+    -db all_contigs_db \
+    -entry "$contig" \
+    -range "$start-$end" \
+    -strand "$strand" \
+    -out ${contig}_${start}-${end}.fasta
+done < sdhBb_coords.txt
+
+
+cat sdhB_Zymoseptoria_tritici_resistance_DNA.fast sdhBb_from_contigs.fasta > sdhBb_all.fasta
+sdhB_Zymoseptoria_tritici_resistance_DNA.fasta
+
+awk '
+/^>/{name=$0; getline seq; seq=toupper(seq);
+    # extract codons
+    P225F=substr(seq,673,3);
+    N225H=substr(seq,673,3);
+    H272R=substr(seq,814,3);
+    H272Y=substr(seq,814,3);
+    I279V=substr(seq,835,3);
+    
+    # check resistance
+    P225F_status=(P225F ~ /TTT|TTC/) ? "resistant":"sensitive";
+    N225H_status=(N225H ~ /CAC/) ? "resistant":"sensitive";
+    H272R_status=(H272R ~ /CGT|CGC|CGA|CGG/) ? "resistant":"sensitive";
+    H272Y_status=(H272Y ~ /TAT|TAC/) ? "resistant":"sensitive";
+    I279V_status=(I279V ~ /GTA|GTC|GTG|GTT/) ? "resistant":"sensitive";
+    
+    # print report
+    printf "%s\nP225F: %s -> %s\nN225H: %s -> %s\nH272R: %s -> %s\nH272Y: %s -> %s\nI279V: %s -> %s\n\n", \
+    name, P225F, P225F_status, N225H, N225H_status, H272R, H272R_status, H272Y, H272Y_status, I279V, I279V_status
+}'  SdhBb_aligned.fasta > sdhb_resistance_report.txt
+
+
+# Quality Control and Trimming (fastp)
+conda install -c bioconda fastp
+cd raw_data
+for sample in *_R1_001.fastq.gz
+do
+  base=$(basename ${sample} _R1_001.fastq.gz)
+  fastp -i ${base}_R1_001.fastq.gz -I ${base}_R2_001.fastq.gz \
+        -o ../trimmed_data/${base}_R1_trimmed.fastq.gz \
+        -O ../trimmed_data/${base}_R2_trimmed.fastq.gz \
+        -h ../qc_reports/${base}_fastp.html -j ../qc_reports/${base}_fastp.json
+done
+fastp -i *_R1.fastq.gz -I *_R2.fastq.gz -o clean_R1.fastq.gz -O clean_R2.fastq.gz -h report.html -j report.json
+
+# Mapping to Reference Genome (BWA + Samtools)
+# Index Reference
+bwa index ref_genome.fasta
+
+# Align Reads
+
+cd ../trimmed_data
+mkdir ../aligned_bam
+for sample in 73_S419 80_S420 86_S421 93_S422
+do
+  echo "Aligning $sample"
+
+  bwa mem -t 4 GCNrosiarefgenome.fna \
+    ${sample}_clean_R1_001.fastq.gz \
+    ${sample}_clean_R2_001.fastq.gz | \
+  samtools view -bS - | \
+  samtools sort -o ${sample}_aligned_sorted.bam
+
+  samtools index ${sample}_aligned_sorted.bam
+done
+
+
+bwa mem -t 4 ../ref_genome.fasta \
+    ${base}_R1_trimmed.fastq.gz ${base}_R2_trimmed.fastq.gz | \
+    samtools view -Sb - > ../aligned_bam/${base}.bam
+
+# For singles 
+bwa mem GCNrosiarefgenome.fna 73_S419_clean_R1_001.fastq.gz 73_S419_clean_R2_001.fastq.gz > 73_S419_alignment.sam
+# Convert SAM to BAM
+samtools view -bS 73_S419_alignment.sam > 73_S419_alignment.bam
+
+# Sort the BAM file
+samtools sort 73_S419_alignment.bam -o 73_S419_alignment_sorted.bam
+
+# Index bam files
+samtools index 73_S419_alignment_sorted.bam
+
+
+    
+# Sort and Index
+
+cd ../aligned_bam
+samtools sort -o sorted_${bam} $bam
+samtools index sorted_${bam}
+
+# Variant Calling (bcftools)
+conda install -c bioconda bcftools
+
+# Create combined pileup
+samtools mpileup -uf reference/ref_genome.fasta aligned_bam/*_sorted.bam | \
+    bcftools call -mv -Oz -o variants.vcf.gz
+
+# Index VCF
+bcftools index variants.vcf.gz
+
+# Call variants (from previous alignment)
+bcftools mpileup -f ref_genome.fasta aligned_bam/*.bam | bcftools call -mv -Oz -o all_samples.vcf.gz
+
+# Filter variants
+bcftools filter -e 'QUAL<30 || DP<10' all_samples.vcf.gz -Oz -o filtered.vcf.gz
+
+# Convert to PHYLIP
+vcftools --vcf filtered.vcf.gz --out snp_matrix --phylip
+
+# Build SNP tree
+fasttree -nt -gtr snp_matrix.phylip > snp_tree.nwk
+
+# Detect Housekeeping Genes & Resistance Genes
+# Create BLAST database
+makeblastdb -in reference/ref_genome.fasta -dbtype nucl -out blast_results/ref_db
+
+# Create query files
+cat > blast_resistance_genes.fa << 'EOF'
+>CYP51A
+ATGGCTGTATCAGTTCGTTTCTGCTGCTCG...
+>SdhB
+ATGGACGTGAAGTGGAGGTCAGGATTTTGAG...
+EOF
+>
+# Extract sequences
+
+/home/muzhinjin/tikafinal/ncbi-blast-2.15.0+/bin/makeblastdb -in 100contigs.fasta -dbtype nucl
+/home/muzhinjin/tikafinal/ncbi-blast-2.15.0+/bin/blastn -query NeopestalotroseITS.fasta -db 100contigs.fasta -outfmt 6 -out 100contigITS.tsv
+/home/muzhinjin/tikafinal/samtools-1.19.2/samtools faidx 100contigs.fasta
+/home/muzhinjin/tikafinal/samtools-1.19.2/samtools faidx 100contigs.fasta NODE_499_length_3025_cov_4728.818860:450-995 > 100cintigITS_raw.fasta
+cat 
+
+# Run BLAST searches
+blastn -query blast_resistance_genes.fa -db blast_results/ref_db \
+       -out blast_results/resistance_blast.txt -evalue 1e-5 -outfmt 6
+
+# Use blastn to search genes
+makeblastdb -in ref_genome.fasta -dbtype nucl -out ref_db
+blastn -query housekeeping.fasta -db ref_db -out hk_blast.txt -evalue 1e-5 -outfmt 6
+blastn -query fungicide_genes.fasta -db ref_db -out resistance_blast.txt -evalue 1e-5 -outfmt 6
+# House keeping genes
+>ACT1_Fungal_Actin
+ATGGTCGGTATGGGTCAAAAAGAAATGGTAAGGTTATGTCACCAACTGGGACGATATGGAGAAGATCTGGCATCACACCTTCTACAACGAGCTGGAA
+
+>EF1A_Translation_Elongation_Factor_1_Alpha
+ATGGGTAAGGAGGACAAGACTGGAAGTTGAAGAGGAGCTTGATTTCAAGAACATGACGCTGAAGGTTGACGATATTGATGGAATCGTCGGAGAGGACA
+
+>GAPDH_Glyceraldehyde-3-phosphate_dehydrogenase
+ATGGTTGTTGAGGTTGTTGTTGACGTTGGTGTTGGTGATGCTGTTGTTGCTGATGTTGTTGTTGTTGGTTCTGATGCTGTTGGTGTTGGTGGTCGAG
+
+>TUB2_Beta_Tubulin
+ATGCGTGAGTGCATCAAGAAGGACTACCTGGGCACCCACCTCGGAGCGTGTGTACAGTCCACCGCCGATGTCTACGTCGTACAGTTGGGAGCCG
+
+>RPB2_RNA_polymerase_II_largest_subunit
+ATGGGCAAGGGTCAGATTGATGTCTGGGTCGATTGTTGAGGCGAGTTCGGTGAGTTCGAGGCTGACTTCGAGGAGTTGATGACGAGCTTGAGG
+
+
+# Fungicide ressistance genes 
+
+>CYP51A_Sterol_14α-demethylase_Azole_target
+ATGGCTGTATCAGTTCGTTTCTGCTGCTCGATGTGTCTCGTGCTGGTGCTGTTGGCGGCTCGTTGTCTCGTTGGAGCTGCTGTTGTTGCTGGT
+
+>SdhB_Succinate_Dehydrogenase_Subunit_B_SDHI_target
+ATGGACGTGAAGTGGAGGTCAGGATTTTGAGGTCGTTGAGCTGGTTCTGTTCTGGTGGTGGTGATGTGGTGTCTGCTGATGGTCAGGATGTGGAC
+
+>FKS1_1,3-beta-D-glucan_synthase_Echinocandin_target
+ATGGTTGGTGCTGGTTGCTGGTGGTTGCTGATGCTGCTGTTGCTGCTGCTGGTCAGGGTTCTGGTGTTGTTGTTGGTTCTGTTGCTGATGTT
+
+>ABC1_ABC_Transporter_Multidrug_Resistance
+ATGGCGCTGGTTGTTGGTTCTGATGTTGTTGATGCTGGTGTTGCTGCTGTTGCTGGTGCTGCTGGTGCTGGTGGTGCTGGTGCTGCTGGTTCT
+
+>MDR1_Major_Facilitator_Superfamily_MDR
+ATGGTGCTGGTTGTTGCTGCTGCTGGTGTTGTTGTTGCTGGTCAGGTTGGTGCTGGTCAGGGTGTTGGTGGTCAGGGTCAGGGTGGTCAG
+
+# 1. FKS1 – β-1,3-glucan synthase (echinocandin resistance)
+wget -O FKS1.fasta "https://www.uniprot.org/uniprot/P38631.fasta"
+
+# 2. ERG27 – 3-keto-steroid reductase (fenhexamid resistance)
+wget -O ERG27.fasta "https://www.uniprot.org/uniprot/Q6CJC2.fasta"
+
+# 3. sdhB – Succinate dehydrogenase iron-sulfur subunit (SDHI resistance)
+wget -O sdhB.fasta "https://www.uniprot.org/uniprot/T1QD65.fasta"
+
+# 4. β‑tubulin (TUB2) – benzimidazole (MBC) resistance
+wget -O TUB2.fasta "https://www.uniprot.org/uniprot/P40904.fasta"
+
+# 5. Cyt b – Mitochondrial cytochrome b (QoI / azoxystrobin resistance)
+wget -O cytb.fasta "https://www.uniprot.org/uniprot/Q7YF16.fasta"
+
+# 6. CYP51 (also known as ERG11) – Azole/DMI fungicide resistance
+wget -O CYP51.fasta "https://www.uniprot.org/uniprot/Q4WNT5.fasta"
+
+# 7. HOG1 – Protein kinase (MAPK pathway, stress signaling)
+wget -O HOG1.fasta "https://www.uniprot.org/uniprot/A0A8H6BVP0.fasta"
+
+
+
+  
+
     
     # Look for EFF field (SnpEff annotation)
     for (i in info) {
