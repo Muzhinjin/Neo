@@ -149,7 +149,7 @@ echo "Genomes processed: $COUNT"
 echo "Results directory: $OUTDIR"
 echo "=========================================="
 
-#Phylogenomics
+# Phylogenomics
 
 ern jobs submit \
     --name=Neopestalotiopsis_IQTree \
@@ -160,6 +160,17 @@ ern jobs submit \
     --input="SUPERMATRIX.partitions_AA.txt" \
     --input="run_iqtree.sh" \
     --command="bash run_iqtree.sh"
+
+    # Orthofinder
+
+    orthofinder \
+    -f 03_annotation/proteins \
+    -S diamond \
+    -M msa \
+    -A mafft \
+    -T iqtree \
+    -t 16 \
+    -a 8
 
 # Extract sequences
 
