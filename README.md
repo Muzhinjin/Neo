@@ -149,7 +149,17 @@ echo "Genomes processed: $COUNT"
 echo "Results directory: $OUTDIR"
 echo "=========================================="
 
+#Phylogenomics
 
+ern jobs submit \
+    --name=Neopestalotiopsis_IQTree \
+    --threads=16 \
+    --memory=64gb \
+    --hours=48 \
+    --input="SUPERMATRIX.fasta" \
+    --input="SUPERMATRIX.partitions_AA.txt" \
+    --input="run_iqtree.sh" \
+    --command="bash run_iqtree.sh"
 
 # Extract sequences
 
