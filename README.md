@@ -187,6 +187,20 @@ ern jobs submit
 
 ern jobs submit --name="auspicious-ocelot" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in PX112669.fasta -dbtype nucl -out PX112669_db
 
+# MAT gene
+
+ern jobs submit \
+  --name=Neo_MAT_TBLASTN \
+  --threads=16 \
+  --memory=64gb \
+  --hours=100 \
+  --input="config.sh" \
+  --input="03_tblastn.sh" \
+  --input="MAT_analysis/genomes/" \
+  --input="MAT_analysis/references/MAT_refs.faa" \
+  --module="blast/3.0_6bf5a81" \
+  -- bash 03_tblastn.sh
+
 # Blast
  ern jobs submit --name="diligent-tiger" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in MAT_Neurospora.faa -dbtype prot -parse_seqids -out MAT_reference_db
 
