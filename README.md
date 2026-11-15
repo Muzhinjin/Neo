@@ -201,6 +201,15 @@ ern jobs submit \
   --module="blast/3.0_6bf5a81" \
   -- bash 03_tblastn.sh
 
+  #FASTANI
+
+  /home/muzhinjin/.local/bin/fastANI
+$HOME/.local/bin/fastANI \
+--ql genome_list.txt \
+--rl genome_list.txt \
+--threads 16 \
+-o FastANI_all_vs_all.tsv
+
 # Blast
  ern jobs submit --name="diligent-tiger" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in MAT_Neurospora.faa -dbtype prot -parse_seqids -out MAT_reference_db
 
