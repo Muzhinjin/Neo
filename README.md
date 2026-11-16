@@ -183,6 +183,9 @@ ern jobs submit
 -f OrthoFinder_input
 -t 32
 -a 32
+
+
+ ern jobs submit   --name=NEoOrthoFinder   --threads=32   --memory=128gb   --hours=72   --input="Orthofinder_clean/*_proteins.faa"   --module="orthofinder/1.1_76a008b"   --command=orthofinder -- -f Orthofinder_clean -t 32 -a 32
 # Extract sequences
 
 ern jobs submit --name="auspicious-ocelot" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in PX112669.fasta -dbtype nucl -out PX112669_db
