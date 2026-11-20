@@ -213,6 +213,11 @@ $HOME/.local/bin/fastANI \
 --threads 16 \
 -o FastANI_all_vs_all.tsv
 
+
+#fungcde restnce 
+
+bash cyp51_scan.sh Cyp51Areference.fasta *_proteins.faa
+
 # Blast
  ern jobs submit --name="diligent-tiger" --threads=8 --memory=16gb --hours=24 --module='blast/3.0_6bf5a81 python=3.12' -- makeblastdb -in MAT_Neurospora.faa -dbtype prot -parse_seqids -out MAT_reference_db
 
