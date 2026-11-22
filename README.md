@@ -585,3 +585,80 @@ wget -O HOG1.fasta "https://www.uniprot.org/uniprot/A0A8H6BVP0.fasta"
         }
     }
 }
+
+
+# Population Genomics
+
+Population structure and genetic diversity: step-by-step
+
+Strawberry crown isolates (NC series), Illumina PE reads, SPAdes assemblies, sample metadata sample_metadatafinal.tsv.
+
+Approach
+
+You have raw reads for every isolate, so the standard route is reference-based SNP calling: map all isolates to one reference, call SNPs jointly with GATK, filter hard, then analyse the SNPs. This is the same logic as the method you pasted (GATK HaplotypeCaller GVCF, joint genotyping, biallelic SNPs, VCFtools filters, repeat masking, adegenet/poppr analyses, index of association, GST/G'ST, clone correction).
+
+The SPAdes assemblies serve only to supply the reference. The Augustus proteins are not needed for SNP-based structure. You could use them later for BUSCO or orthology trees, or to annotate which genes carry the SNPs.
+
+Decision to check: ploidy. 00_config.sh sets PLOIDY=1 (haploid, typical for ascomycete fungi). If your organism is diploid (e.g. an oomycete like Phytophthora, as in the pasted methods), set PLOIDY=2. Everything else adapts automatically.
+
+Sample naming
+
+Read files are named NC100_S423_R1_filtered.fastq.gz, so the VCF sample name is NC100_S423. The metadata Strain_ID is NC100. The R scripts strip the _S### suffix to join the two. Isolates without a metadata row are reported with a warning.
+
+Pipeline
+Step	Script	Env	What it does	Check before moving on
+0	edit scripts/00_config.sh	–	Paths, ploidy, thresholds	META path is right; PLOIDY correct
+1	01_setup_env.sh	–	Creates conda envs popgen, popgen-r	–
+2	02_reference.sh	popgen	Assembly stats, picks reference (highest N50, contigs ≥1 kb), indexes it	Open ref/assembly_stats.tsv. Reference should be a typical genome size for the species, not an outlier. Override with REF_ASM=...
+2b	02b_repeats_optional.sh	popgen-rep	RepeatModeler/RepeatMasker, writes ref/repeats.bed	Optional but recommended. Step 6 uses the BED automatically if it exists
+3	03_map.sh	popgen	bwa mem, fixmate, sort, markdup per isolate	logs/bwa_*.log mapping rates
+4	04_bam_qc.sh	popgen	Mapped %, mean depth, breadth; writes samples_pass.txt	Drop low-depth or low-mapping isolates (possible contamination or wrong species)
+5	05_call_variants.sh	popgen	HaplotypeCaller (-ERC GVCF), CombineGVCFs, GenotypeGVCFs	vcf/raw.vcf.gz exists
+6	06_filter_vcf.sh	popgen	Biallelic SNPs, GATK hard filters, DP/GQ/QUAL, repeats, missingness, LD pruning	Read the printed SNP counts after each filter
+7	07_admixture.sh	popgen	ADMIXTURE, K = 1–10, 10-fold CV	admix/cv.tsv
+8	08_tree_iqtree.sh	popgen	ML SNP tree, +ASC, 1000 ultrafast bootstraps	tree/snp_tree.treefile
+10	10_structure.R	popgen-r	PCA, DAPC, UPGMA + 1000 bootstraps, MSN	See outputs below
+11	11_diversity.R	popgen-r	MLGs and clone correction, π, θW, Tajima's D, Ia/r̄d, GST, G'ST, FST, AMOVA	See outputs below
+12	12_plot_admixture.R	popgen-r	CV curve and ancestry barplot	–
+Commands
+bash
+# 0. edit paths/ploidy
+nano scripts/00_config.sh
+
+# 1. once
+bash scripts/01_setup_env.sh
+conda activate popgen
+
+# 2-8
+bash scripts/02_reference.sh        # review ref/assembly_stats.tsv; rerun with REF_ASM=... if needed
+# optional: conda activate popgen-rep && bash scripts/02b_repeats_optional.sh && conda activate popgen
+bash scripts/03_map.sh
+bash scripts/04_bam_qc.sh
+bash scripts/05_call_variants.sh
+bash scripts/06_filter_vcf.sh
+bash scripts/07_admixture.sh
+bash scripts/08_tree_iqtree.sh
+
+# R steps
+conda activate popgen-r
+source scripts/00_config.sh         # sets WORK, META, PLOIDY (exported)
+R_OUT=$WORK/results
+
+Rscript scripts/10_structure.R   $WORK/vcf/structure.vcf.gz   $META $R_OUT/structure
+Rscript scripts/11_diversity.R   $WORK/vcf/diversity.vcf.gz   $META $R_OUT/diversity $WORK/ref/callable_bp.txt
+Rscript scripts/12_plot_admixture.R $WORK/admix $META $R_OUT/admixture      # optional args: K  facet_variable
+
+For long runs on a server, wrap steps 3 and 5 in nohup ... & or submit through SLURM. Both are resumable, because finished BAMs and GVCFs are skipped.
+
+What the results mean
+PCA, DAPC, ADMIXTURE and the trees should agree. If they do, the structure is real. DAPC_cluster_vs_metadata.txt cross-tabulates clusters against County, Region, Cultivar, Host, Plant part and collection month. Clusters that track a metadata variable point to geographic, host or temporal structure. Clusters spread across all of them suggest a single, mixed population.
+ADMIXTURE K choice: take the lowest CV error, or the elbow if the curve is flat. Plot neighbouring K values (12_plot_admixture.R ... <K>). K = 1 being best means no structure.
+MLGs (MLG_assignments.csv): many isolates collapsing into few MLGs means a clonal population, as expected for a strawberry pathogen spread on transplants. Check pairwise_distance_hist.pdf. Set CLONE_THR at the gap between near-identical pairs and distinct pairs. The default 0.01 follows your pasted methods. Rerun step 11 with CLONE_THR=0.005 Rscript ... to test sensitivity.
+Diversity (diversity_by_group.csv): π and θW are per site, with one row for all isolates and one per group, computed on both the full and the clone-corrected data. Tajima's D < 0 suggests expansion or a recent sweep (typical of a clonal lineage), and D > 0 suggests balancing selection or a structured or admixed population.
+Index of association (index_of_association.csv): r̄d near 0 with a non-significant permutation test (ia_permutation_test.txt) is consistent with recombination. r̄d clearly > 0 means linkage, i.e. clonal reproduction.
+Differentiation (differentiation.txt): pairwise GST, G'ST and Weir & Cockerham FST, plus AMOVA per metadata variable. Interpret groups with few isolates cautiously, since MIN_N defaults to 5.
+Caveats you should know about
+π and θ are approximations. They are computed from SNPs only and divided by the "callable" length (reference size minus repeats). This ignores invariant sites that failed depth or quality filters, so per-site values are somewhat underestimated. For publication-grade π, dxy and D, call all sites (GenotypeGVCFs --all-sites) and use pixy. The environment recipe is in 01_setup_env.sh.
+Metadata balance. Most isolates share Host = Strawberry and Plant part = Crown. Those columns, and any group with fewer than MIN_N isolates, are skipped automatically. County, Cultivar, and collection date are the informative variables. If many cultivars are NA, they form an "Unknown" group that is excluded.
+Reference bias. Isolates far from the reference map poorly. Check mapping rates in bam_qc.tsv. If one isolate or clade has a much lower rate, repeat with a reference from that clade.
+Not tested on your data. I could not run these scripts in my environment (no R, no network), so I only checked the shell scripts' syntax. Expect to fix small package-version issues on first run, especially in the R steps. Send me the error messages and I'll patch them.
