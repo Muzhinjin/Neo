@@ -192,6 +192,20 @@ ern jobs submit --name="auspicious-ocelot" --threads=8 --memory=16gb --hours=24 
 
 # MAT gene
 
+
+ern jobs submit \
+  --name="Neo_MAT_BLASTP" \
+  --threads=16 \
+  --memory=64gb \
+  --hours=100 \
+  --input="config.sh" \
+  --input="01_blastp.sh" \
+  --input="MAT_analysis/genomes/" \
+  --input="MAT_analysis/references/MAT_refs.faa" \
+  --module="blast/3.0_6bf5a81" \
+  -- bash 01_blastp.sh
+
+
 ern jobs submit \
   --name=Neo_MAT_TBLASTN \
   --threads=16 \
