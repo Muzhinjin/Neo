@@ -608,9 +608,31 @@ Read files are named NC100_S423_R1_filtered.fastq.gz, so the VCF sample name is 
 Pipeline
 Step	Script	Env	What it does	Check before moving on
 0	edit scripts/00_config.sh	–	Paths, ploidy, thresholds	META path is right; PLOIDY correct
-1	01_setup_env.sh	–	Creates conda envs popgen, popgen-r	–
+1	01_setup_env.sh	–	Creates conda envs popgen, popgen-r	– conda activate popgen-r 
 2	02_reference.sh	popgen	Assembly stats, picks reference (highest N50, contigs ≥1 kb), indexes it	Open ref/assembly_stats.tsv. Reference should be a typical genome size for the species, not an outlier. Override with REF_ASM=...
+ern jobs submit \
+  --name="NeoGATK" \
+  --threads=8 \
+  --memory=64gb \
+  --hours=100 \
+  --input="ref/reference.fasta" \
+  --module='gatk/1.0_5ea5a38 python=3.6' \
+  --command=gatk -- \
+  CreateSequenceDictionary \
+  -R ref/reference.fasta \
+  -O ref/reference.dict
+  
 2b	02b_repeats_optional.sh	popgen-rep	RepeatModeler/RepeatMasker, writes ref/repeats.bed	Optional but recommended. Step 6 uses the BED automatically if it exists
+ern jobs submit \
+  --name="NEOreapeatmodeller" \
+  --threads=16 \
+  --memory=64gb \
+  --hours=48 \
+  --input="ref/reference.fasta" \
+  --module='repeatmodeler/1.0_881fa7a python=3.12' \
+  --command=BuildDatabase -- \
+  -name refdb \
+  reference.fasta
 3	03_map.sh	popgen	bwa mem, fixmate, sort, markdup per isolate	logs/bwa_*.log mapping rates
 4	04_bam_qc.sh	popgen	Mapped %, mean depth, breadth; writes samples_pass.txt	Drop low-depth or low-mapping isolates (possible contamination or wrong species)
 5	05_call_variants.sh	popgen	HaplotypeCaller (-ERC GVCF), CombineGVCFs, GenotypeGVCFs	vcf/raw.vcf.gz exists
