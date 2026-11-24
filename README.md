@@ -634,6 +634,15 @@ ern jobs submit \
   -name refdb \
   reference.fasta
 3	03_map.sh	popgen	bwa mem, fixmate, sort, markdup per isolate	logs/bwa_*.log mapping rates
+ern jobs submit \
+  --name="NeoBWA_Index" \
+  --threads=8 \
+  --memory=16gb \
+  --hours=4 \
+  --input="ref/reference.fasta" \
+  --module='bwa/1.0' \
+  --command=bwa -- \
+  index ref/reference.fasta
 4	04_bam_qc.sh	popgen	Mapped %, mean depth, breadth; writes samples_pass.txt	Drop low-depth or low-mapping isolates (possible contamination or wrong species)
 5	05_call_variants.sh	popgen	HaplotypeCaller (-ERC GVCF), CombineGVCFs, GenotypeGVCFs	vcf/raw.vcf.gz exists
 6	06_filter_vcf.sh	popgen	Biallelic SNPs, GATK hard filters, DP/GQ/QUAL, repeats, missingness, LD pruning	Read the printed SNP counts after each filter
