@@ -643,8 +643,25 @@ ern jobs submit \
   --module='bwa/1.0' \
   --command=bwa -- \
   index ref/reference.fasta
+
 4	04_bam_qc.sh	popgen	Mapped %, mean depth, breadth; writes samples_pass.txt	Drop low-depth or low-mapping isolates (possible contamination or wrong species)
+ern jobs submit  --name=Neo_BAM_QC --threads=4  --memory=32gb  --hours=12  --input="04_bam_qc.sh" --input="00_config.sh"  --input="popgen/samples.txt" --input="popgen/bam"  --module="samtools/2.1_4854cc4 python=3.12" --command="bash 04_bam_qc.sh"
+
 5	05_call_variants.sh	popgen	HaplotypeCaller (-ERC GVCF), CombineGVCFs, GenotypeGVCFs	vcf/raw.vcf.gz exists
+
+ern jobs submit \
+  --name="Neo_Variant_Calling" \
+  --threads=16 \
+  --memory=64gb \
+  --hours=100 \
+  --input="05_call_variants_v2.sh" \
+  --input="00_config.sh" \
+  --input="popgen/samples_pass.txt" \
+  --input="popgen/bam" \
+  --input="popgen/ref" \
+  --module="gatk/1.0_5ea5a38" \
+  --command="bash 05_call_variants_v2.sh"
+
 6	06_filter_vcf.sh	popgen	Biallelic SNPs, GATK hard filters, DP/GQ/QUAL, repeats, missingness, LD pruning	Read the printed SNP counts after each filter
 7	07_admixture.sh	popgen	ADMIXTURE, K = 1–10, 10-fold CV	admix/cv.tsv
 8	08_tree_iqtree.sh	popgen	ML SNP tree, +ASC, 1000 ultrafast bootstraps	tree/snp_tree.treefile
@@ -693,3 +710,11 @@ Caveats you should know about
 Metadata balance. Most isolates share Host = Strawberry and Plant part = Crown. Those columns, and any group with fewer than MIN_N isolates, are skipped automatically. County, Cultivar, and collection date are the informative variables. If many cultivars are NA, they form an "Unknown" group that is excluded.
 Reference bias. Isolates far from the reference map poorly. Check mapping rates in bam_qc.tsv. If one isolate or clade has a much lower rate, repeat with a reference from that clade.
 Not tested on your data. I could not run these scripts in my environment (no R, no network), so I only checked the shell scripts' syntax. Expect to fix small package-version issues on first run, especially in the R steps. Send me the error messages and I'll patch them.
+
+#Tribase
+
+mkdir -p extracted_loci/refs
+for p in ITS:KY271740 TEF:KY271093 TUB2:KY271094; do
+  curl -sSf "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=${p#*:}&rettype=fasta&retmode=text" > extracted_loci/refs/${p%%:*}.fasta
+done
+head -c 200 extracted_loci/refs/*.fasta   # check they look like FASTA
