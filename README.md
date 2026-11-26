@@ -684,7 +684,12 @@ bash scripts/03_map.sh
 bash scripts/04_bam_qc.sh
 bash scripts/05_call_variants.sh
 bash scripts/06_filter_vcf.sh
+
+ern jobs submit   --name="Neo_VCF_Filtering_v2"   --threads=16   --memory=64gb   --hours=100   --input="06_filter_vcf_v3.sh"   --input="00_config_v2.sh"   --input="popgen/vcf"   --input="popgen/ref"   --module="gatk/1.0_5ea5a38"   --module="vcftools/1.0_9326bcf"   --module="plink/1.0_9cff8a0"   --module="samtools/1.0_5128b90"   --command="bash 06_filter_vcf_v3.sh"
+
 bash scripts/07_admixture.sh
+ern jobs submit   --name="Neo_Admixture"   --threads=16   --memory=32gb   --hours=24   --input="08_admixture_v2.sh"   --input="00_config_v2.sh"   --input="popgen/vcf"   --module="plink/1.0_9cff8a0"   --command="bash 08_admixture_v2.sh"
+
 bash scripts/08_tree_iqtree.sh
 
 # R steps
