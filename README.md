@@ -606,6 +606,27 @@ Sample naming
 Read files are named NC100_S423_R1_filtered.fastq.gz, so the VCF sample name is NC100_S423. The metadata Strain_ID is NC100. The R scripts strip the _S### suffix to join the two. Isolates without a metadata row are reported with a warning.
 
 Pipeline
+module load bwa/1.0_bec6a80 iqtree/2.1_fb8f580 vcf2phylip/1.1_bf013e8 vcftools/1.0_9326bcf blast/3.0_6bf5a81 bbtools/2.0_48bf7d9 bcftools/1.1_a8ebeaf bamtools/1.0_a3b280e gatk/1.0_5ea5a38 samtools/1.0_5128b90
+module load  plink/1.0_9cff8a0 picard/1.0_90fd432 bedtools/1.0_52b61cf snippy/1.1_acdd356
+module load conda
+conda create -n vcf_tools -c conda-forge -c bioconda htslib bcftools -y
+conda activate vcf_tools
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate
+conda info --base
+source /home/muzhinjin/miniconda3/etc/profile.d/conda.sh
+conda activate vcf_tools
+conda env list
+conda run -n vcf_tools bcftools --version
+bcftools plugin -l | grep -i fixploidy
+
+#admxture
+conda install -c bioconda admixture
+export PATH="$PATH:/home/muzhinjin/.conda/envs/admixture/bin"
+ls /home/muzhinjin/.conda/envs/admixture/bin/admixture
+/home/muzhinjin/.conda/envs/admixture/bin/admixture --help | head -3
+env -i PATH=/usr/bin:/bin bash -c 'source ./00_config_v2.sh >/dev/null 2>&1; command -v admixture'
+
 Step	Script	Env	What it does	Check before moving on
 0	edit scripts/00_config.sh	–	Paths, ploidy, thresholds	META path is right; PLOIDY correct
 1	01_setup_env.sh	–	Creates conda envs popgen, popgen-r	– conda activate popgen-r 
@@ -691,6 +712,8 @@ bash scripts/07_admixture.sh
 ern jobs submit   --name="Neo_Admixture"   --threads=16   --memory=32gb   --hours=24   --input="08_admixture_v2.sh"   --input="00_config_v2.sh"   --input="popgen/vcf"   --module="plink/1.0_9cff8a0"   --command="bash 08_admixture_v2.sh"
 
 bash scripts/08_tree_iqtree.sh
+ ern jobs submit   --name="Neo_IQTreeSNP"   --threads=16   --memory=32gb   --hours=48   --input="09_iqtree_v3.sh"   --input="00_config_v2.sh"   --input="popgen/vcf"   --module="vcf2phylip/1.1_bf013e8"   --module="iqtree/2.1_fb8f580"   --command="bash 09_iqtree_v3.sh"
+
 
 # R steps
 conda activate popgen-r
