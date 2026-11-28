@@ -746,3 +746,8 @@ for p in ITS:KY271740 TEF:KY271093 TUB2:KY271094; do
   curl -sSf "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=${p#*:}&rettype=fasta&retmode=text" > extracted_loci/refs/${p%%:*}.fasta
 done
 head -c 200 extracted_loci/refs/*.fasta   # check they look like FASTA
+
+
+mafft --auto --thread 8 TUB2_trimmed.fasta > TUB2.aln.fasta
+ python3 concat_loci.py Neopestalotiopsis  ITS.aln.fasta TEF.aln.fasta TUB2.aln.fasta
+
